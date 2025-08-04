@@ -18,7 +18,7 @@ from shapely.geometry import Point
 # print(gdf['CNTYNAME'].unique())
 
 ### Pitt County Address Data is Good
-gdf = gpd.read_file("pitt_addresses.shp")
+# gdf = gpd.read_file("pitt_addresses.shp")
 # print(gdf['county_nam'].unique())
 
 
@@ -26,4 +26,7 @@ gdf = gpd.read_file("pitt_addresses.shp")
 # gdf = gpd.read_file("johnston_addresses.shp")
 # print(gdf['County'].unique())
 
+
+
+gdf = gpd.read_file("pitt_voters.txt")
 print(gdf.columns)
