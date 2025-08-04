@@ -26,6 +26,8 @@ from thefuzz import fuzz, process
 import requests
 import os
 import warnings
+from shapely.strtree import STRtree
+
 warnings.filterwarnings('ignore')
 
 class VoterPropertyAnalysis:
@@ -394,15 +396,20 @@ class VoterPropertyAnalysis:
             # Calculate density using spatial analysis
             centroids = voters_parcels.geometry.centroid
             
-            # Create buffers around each point and count neighbors
-            buffer_distance = 1000  # 1000 feet
-            voters_parcels['neighbor_count'] = 0
+            # # Create buffers around each point and count neighbors
+            # buffer_distance = 1000  # 1000 feet
+            # voters_parcels['neighbor_count'] = 0
             
-            for idx, point in centroids.items():
-                buffer = point.buffer(buffer_distance)
-                neighbors = centroids.within(buffer).sum() - 1  # Exclude self
-                voters_parcels.loc[idx, 'neighbor_count'] = neighbors
+            # for idx, point in centroids.items():
+            #     buffer = point.buffer(buffer_distance)
+            #     neighbors = centroids.within(buffer).sum() - 1  # Exclude self
+            #     voters_parcels.loc[idx, 'neighbor_count'] = neighbors
             
+            tree = STRtree(centroids.geometry)
+            voters_parcels['neighbor_count'] = centroids.geometry.apply(
+                lambda x: len(tree.query(x.buffer(1000))) - 1
+            )
+
             # Classify as urban/rural based on neighbor density
             urban_threshold = voters_parcels['neighbor_count'].quantile(0.7)
             voters_parcels['area_type'] = voters_parcels['neighbor_count'].apply(
