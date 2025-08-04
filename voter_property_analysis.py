@@ -217,24 +217,37 @@ class VoterPropertyAnalysis:
             else:
                 return voters[addr_col].astype(str)
         else:
-            return pd.Series([''] * len(voters))
-    
+            return pd.Series([''] * len(voters))   
+
     def _create_address_string(self, addresses):
-        components = ["addr_hn", "addr_sn", "addr_st"]
+        # Try Pitt-style fields
+        pitt_parts = ['addr_hn', 'addr_sn', 'addr_st']
+        if all(part in addresses.columns for part in pitt_parts):
+            return pd.Series([
+                f"{hn} {sn} {st}".strip()
+                for hn, sn, st in zip(addresses['addr_hn'], addresses['addr_sn'], addresses['addr_st'])
+            ], index=addresses.index)
 
-        usable_parts = []
-        for col in components:
-            if col in addresses.columns and not addresses[col].isnull().all():
-                usable_parts.append(addresses[col].astype(str).fillna("").str.strip())
+        # Try Johnston-style fields
+        johnston_parts = ['Add_Number', 'St_Name']
+        if all(part in addresses.columns for part in johnston_parts):
+            return pd.Series([
+                f"{num} {name}".strip()
+                for num, name in zip(addresses['Add_Number'], addresses['St_Name'])
+            ], index=addresses.index)
 
-        if usable_parts:
-            return pd.Series(
-                [" ".join(filter(None, parts)).strip() for parts in zip(*usable_parts)],
-                index = addresses.index,
-            )
-        else:
-            return pd.Series([""] * len(addresses), index=addresses.index)
+        # Try single fallback field
+        fallback_fields = ['Full_Addre', 'full_addre', 'St_Address']
+        for field in fallback_fields:
+            if field in addresses.columns:
+                return addresses[field].astype(str).fillna("")
+
+        # If no usable fields found
+        print("Warning: No usable address fields found for matching.")
+        return pd.Series([""] * len(addresses), index=addresses.index)
+
     
+
     def spatial_join_parcels(self, county):
         """Join geocoded voters with parcel data"""
         print(f"\n=== SPATIAL JOIN WITH PARCELS FOR {county.upper()} ===")
