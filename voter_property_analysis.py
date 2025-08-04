@@ -418,7 +418,68 @@ class VoterPropertyAnalysis:
                 output_file, driver='GPKG'
             )
     
-    def analyze_proximity_to_schools(self):
+def analyze_proximity_to_schools(self):
+    """
+    Analysis #3: Analyze voter characteristics by proximity to schools
+    Uses statewide school dataset and filters by COUNTY
+    """
+    print("\n=== ANALYSIS 3: PROXIMITY TO SCHOOLS ===")
+
+    school_file = "all_nc_schools.shp"
+
+    if not os.path.exists(school_file):
+        print(f"Statewide school file not found: {school_file}")
+        return
+
+    # Load and reproject the full schools file once
+    all_schools = gpd.read_file(school_file).to_crs(self.crs)
+
+    for county in [self.county1, self.county2]:
+        print(f"\nAnalyzing school proximity in {county} County...")
+
+        voters_parcels = self.data[county].get('voters_with_parcels')
+        if voters_parcels is None:
+            print(f"  - Voter data missing for {county}, skipping.")
+            continue
+
+        # Filter schools by county
+        matching_schools = all_schools[all_schools['COUNTY'].str.upper() == county.upper()]
+        if matching_schools.empty:
+            print(f"  - No schools found for {county}")
+            continue
+
+        # Calculate distance to nearest school
+        voters_parcels['dist_to_school'] = voters_parcels.geometry.apply(
+            lambda voter_geom: matching_schools.distance(voter_geom).min()
+        )
+
+        # Optional: classify voters by proximity bands
+        voters_parcels['school_proximity'] = pd.cut(
+            voters_parcels['dist_to_school'],
+            bins=[0, 1000, 5280, 15840, np.inf],  # under 1k ft, under 1 mi, under 3 mi, far
+            labels=["<1000 ft", "≤1 mile", "≤3 miles", ">3 miles"]
+        )
+
+        # Analyze voting patterns by proximity
+        party_cols = [col for col in voters_parcels.columns if 'party' in col.lower()]
+        if not party_cols:
+            print(f"  - Party column not found for {county}")
+            continue
+
+        party_col = party_cols[0]
+        proximity_stats = pd.crosstab(
+            voters_parcels['school_proximity'], voters_parcels[party_col],
+            normalize='index') * 100
+
+        print(f"  - Voter party distribution by proximity to schools in {county}:")
+        print(proximity_stats.round(1))
+
+        # Save result layer
+        output_file = f"{county.lower()}_school_proximity_analysis.gpkg"
+        voters_parcels[['geometry', party_col, 'dist_to_school', 'school_proximity']].to_file(
+            output_file, driver='GPKG')
+        print(f"  - Saved results to {output_file}")
+
         """
         Analysis #3: Analyze voter characteristics by proximity to schools
         Note: Requires school location data

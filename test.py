@@ -19,11 +19,11 @@ from shapely.geometry import Point
 
 ### Pitt County Address Data is Good
 gdf = gpd.read_file("pitt_addresses.shp")
-print(gdf['county_nam'].unique())
+# print(gdf['county_nam'].unique())
 
 
 ### Johnston County Address Data is Good
-gdf = gpd.read_file("johnston_addresses.shp")
-print(gdf['county_nam'].unique())
+# gdf = gpd.read_file("johnston_addresses.shp")
+# print(gdf['County'].unique())
 
-# print(gdf.columns)
+print(gdf.columns)
